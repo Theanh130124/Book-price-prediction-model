@@ -1,132 +1,142 @@
-# Book-price-prediction-model
-Fine-tune (Llama-3.1-8B) Book price prediction based on description 
+# 📘 Book Price Prediction Model  
+
+### 🎯 Fine-tuning Llama 3.1-8B for Predicting Book Prices from Descriptions
+
+---
+
+## 🧠 Overview
+Dự án này tập trung vào **fine-tuning mô hình ngôn ngữ Llama 3.1-8B** để **dự đoán giá sách** dựa trên mô tả nội dung.  
+Toàn bộ pipeline bao gồm các bước từ chuẩn bị dữ liệu, huấn luyện mô hình cho đến đánh giá kết quả.
+
+---
+
+## 📊 1. Dataset
+- **Nguồn dữ liệu:** [Amazon-Reviews-2023-Books-Meta](https://huggingface.co/datasets) từ Hugging Face.  
+- Dữ liệu chứa thông tin mô tả sản phẩm, tiêu đề, và giá bán, phục vụ cho bài toán **price prediction**.
+
+---
+
+## 🧹 2. Data Preparation Pipeline
+
+### 🔸 Step 1: Data Cleaning  
+- Loại bỏ các thông tin không cần thiết như mã sản phẩm, ký tự đặc biệt, hoặc các trường không giúp ích cho việc dự đoán giá.
+
+### 🔸 Step 2: Tokenization  
+- Sử dụng tokenizer của **Llama** để giới hạn số lượng token trong mỗi mẫu.  
+- Giới hạn:
+  - **Tối thiểu:** 150 tokens (đảm bảo đủ nội dung).  
+  - **Tối đa:** 160 tokens (tránh quá dài).
+
+### 🔸 Step 3: Quality Filtering  
+- Chỉ giữ lại những mẫu dữ liệu có nội dung chất lượng và giá hợp lệ.
+
+### 🔸 Step 4: Prompt Standardization  
+Mọi mẫu dữ liệu đều được chuẩn hóa theo cấu trúc:
 
 
-Quá trình Fine-tuning cho dự án này
-1. Dataset
-Chúng ta sử dụng bộ dữ liệu từ Hugging Face: 👉 Amazon-Reviews-2023-Books-Meta
+---
 
-2. Data Preparation Process
-Quy trình xử lý dữ liệu gồm 4 bước:
+## 🤖 3. Machine Learning Baselines (Before Fine-tuning)
 
-Data Cleaning
-Loại bỏ các thông tin không liên quan như mã sản phẩm, ký tự đặc biệt và các trường thông tin không giúp ích cho việc dự đoán giá.
+| Mô hình | Sai số (MAE) | Ghi chú |
+|----------|---------------|---------|
+| Random Model | $423.71 | Rất kém |
+| Linear Regression | $52.94 | Cải thiện rõ |
+| Word2Vec | $50.94 | Ổn định |
+| HistGradientBoosting | **$50.74** | Tốt nhất trước fine-tune |
 
-Tokenization
-Sử dụng tokenizer của mô hình Llama để đếm và giới hạn số lượng token trong mỗi ví dụ.
+---
 
-Quality Filtering
-Chỉ giữ lại những mẫu dữ liệu:
+## 🧩 4. Fine-tuning Techniques
 
-Đủ nội dung hữu ích (hơn 150 tokens).
+- **LoRA (Low-Rank Adaptation):** Giảm số tham số cần huấn luyện, tăng tốc độ fine-tuning.  
+  🔗 [LoRA Guide - Hugging Face](https://huggingface.co/docs/peft/conceptual_guides/lora)
 
-Không quá dài (dưới 160 tokens).
+- **QLoRA (Quantized LoRA):** Tối ưu bộ nhớ cho mô hình lớn.  
+  📄 [QLoRA Paper (2023)](https://arxiv.org/abs/2305.14314)
 
-Prompt Standardization
-Chuẩn hóa tất cả các prompt theo cấu trúc:
+---
 
-   **Question: "How much does this cost to the nearest dollar?"**
-   **Content: (nội dung sách)**
-   **Answer: (giá)**
-3. Machine Learning Modeling (Before Fine-tuning)
-Random model: Sai số: $423.71 (rất kém).
+## ⚙️ 5. Key Hyperparameters
 
-Linear Regression: Sai số giảm còn $52.94.
+### 🔹 R (Rank)
+- Xác định kích thước không gian con trong LoRA.  
+- Nhỏ hơn → nhanh hơn, ít tham số hơn, nhưng độ chính xác có thể giảm.  
+📘 [Docs: PEFT LoRA Parameters](https://huggingface.co/docs/peft/main/en/package_reference/lora)
 
-Word2Vec: Sai số còn $50.94.
+### 🔹 Alpha
+- Hệ số khuếch đại ảnh hưởng của tham số LoRA lên trọng số gốc.  
+📘 [Docs: LoRA Alpha Scaling](https://arxiv.org/pdf/2106.09685.pdf)
 
-HistGradientBoosting: Sai số thấp nhất $50.74.
+### 🔹 Target Modules
+- Các lớp trong mô hình mà LoRA được áp dụng: `"q_proj"`, `"k_proj"`, `"v_proj"`, `"o_proj"`.  
+📘 [Docs: Choosing Target Modules](https://huggingface.co/docs/peft/conceptual_guides/lora)
 
-4. Fine-tuning Techniques
-LoRA (Low-Rank Adaptation): Tài liệu: LoRA Guide - Huggingface
+---
 
-QLoRA (Quantized LoRA): Tài liệu: QLoRA Guide - Huggingface
+## 🧮 6. LLMs Training Workflow
 
-Paper tham khảo: 📄 QLoRA Paper (2023)
+1. **Forward Pass:** Dữ liệu đi qua mô hình → dự đoán token tiếp theo.  
+2. **Loss Calculation:** So sánh đầu ra với nhãn thật để tính loss.  
+3. **Backward Pass:** Tính gradient theo các tham số.  
+4. **Optimization:**  
 
-5. Important Hyperparameters
-5.1 R (Rank)
-Ý nghĩa: Xác định kích thước không gian con trong LoRA (số lượng tham số thấp hơn được huấn luyện).
 
-Giá trị càng nhỏ → ít tham số cần cập nhật → nhanh hơn, nhưng có thể giảm hiệu quả fine-tuning.
+📘 [Deep Learning Book – Optimization](https://www.deeplearningbook.org/)
 
-Docs: PEFT LoRA Parameters
+---
 
-5.2 Alpha
-Ý nghĩa: Hệ số scale khuếch đại ảnh hưởng của các tham số LoRA lên trọng số ban đầu.
+## ⚙️ 7. Training Configuration
 
-Alpha càng lớn → ảnh hưởng LoRA càng mạnh mẽ.
+### 🔸 SFTTrainer
+- **Epochs:** 3–4  
+- **Batch size:** 1 × 16 (gradient accumulation)  
+- **Optimizer:** `paged_adamw_32bit` – tối ưu bộ nhớ khi fine-tune mô hình lớn  
+📘 [PagedAdamW Optimizer](https://huggingface.co/docs/transformers/main/en/main_classes/optimizer_schedules#paged-adamw)
 
-Docs: LoRA Alpha Scaling (gốc LoRA paper).
+### 🔸 Learning Rate
+- Quá cao → nhảy khỏi điểm tối ưu  
+- Quá thấp → học chậm hoặc kẹt local minimum  
 
-5.3 Target Modules
-Ý nghĩa: Các module trong mô hình mà LoRA sẽ áp dụng.
+### 🔸 Scheduler
+- **Cosine Scheduler:** giảm learning rate theo sóng cosine  
+📘 [Cosine LR Scheduler](https://arxiv.org/abs/1608.03983)
 
-Ví dụ: "q_proj", "k_proj", "v_proj", "o_proj" (các lớp attention projection).
+### 🔸 Warmup Ratio
+- Giai đoạn khởi động: learning rate tăng dần trước khi giảm theo scheduler.
 
-Docs: Choosing Target Modules
+---
 
-6. LLMs Training Process
-6.1 Forward Pass
-Đưa dữ liệu đầu vào qua mô hình để mô hình dự đoán token tiếp theo.
+## 🧰 8. Useful Tools & Frameworks for LLMs
 
-6.2 Loss Calculation
-So sánh đầu ra của mô hình với nhãn thực tế để tính toán loss.
+| Công cụ | Mô tả |
+|----------|--------|
+| 🤗 **Hugging Face** | Mô hình, datasets, leaderboard, demo app |
+| 🔗 **LangChain** | Kết nối nhiều thao tác với LLM qua API đơn giản |
+| 🎛️ **Gradio** | Tạo giao diện demo UI nhanh gọn |
+| 📊 **Weights & Biases** | Phân tích & trực quan hóa quá trình huấn luyện |
+| 🧩 **Streamlit / Dash / Mesop** | Alternatives để xây dựng giao diện tương tác |
+| ☁️ **Google Colab** | Notebook Cloud miễn phí |
+| ⚡ **Modal.com** | Nền tảng serverless triển khai mô hình AI |
 
-6.3 Backward Pass
-Tính toán gradient của loss với respect tới các tham số mô hình.
+---
 
-6.4 Optimization
-Cập nhật trọng số theo công thức:
+## 🎓 9. Học liệu & Tài nguyên
+> “Nếu bạn thật sự muốn đào sâu vào lĩnh vực LLMs và Fine-tuning, hãy bắt đầu từ những khóa học uy tín.”
 
-new_weight = old_weight - learning_rate * gradient
+📚 **NVIDIA Learning Catalog:**  
+🔗 [https://nvdam.widen.net/s/wlbgbqr7cj/nvidia-learning-training-course-catalog](https://nvdam.widen.net/s/wlbgbqr7cj/nvidia-learning-training-course-catalog)
 
-📚 Docs: Deep Learning Book - Optimization
+🎥 **Llm Course (Video reference)**  
 
-7. Training Configuration
-7.1 SFTTrainer Configuration
-Epochs: Số lần duyệt toàn bộ tập dữ liệu huấn luyện (có thể tăng lên 4+).
+---
 
-Batch size: 1 (per device) × 16 (gradient accumulation) = 16 mẫu/lần update.
+## 🧾 10. Notes
+> Tất cả kiến thức và nội dung trong dự án này được tổng hợp từ quá trình học tập và nghiên cứu cá nhân.  
+> **Không có mục đích thương mại – purely educational use.**
 
-7.2 Optimizer
-paged_adamw_32bit:
+---
 
-Phiên bản AdamW tối ưu bộ nhớ khi fine-tune mô hình lớn.
-
-Tài liệu: PagedAdamW Optimizer
-
-7.3 Learning Rate
-Tham số quyết định tốc độ cập nhật trọng số.
-
-Nếu quá cao → có thể nhảy khỏi điểm tối ưu.
-
-Nếu quá thấp → mô hình học rất chậm hoặc kẹt local minimum.
-
-7.4 Scheduler
-Cosine scheduler:
-
-Learning rate giảm theo hình dạng sóng cosine.
-
-Bắt đầu giảm nhẹ → giảm mạnh → ổn định dần.
-
-Docs: Cosine LR Scheduler
-
-7.5 Warmup Ratio
-Giai đoạn khởi động, learning rate tăng dần từ thấp đến mức cao nhất rồi mới bắt đầu giảm theo scheduler.
-
-Một số platforms phổ biến tools & framework trong Llms
-Hugging Face: Nền tảng phổ biến cho các mô hình, bộ dữ liệu, bảng xếp hạng và cả các ứng dụng
-LangChain – Framework mã nguồn mở cung cấp các kết nối nhiều thao tác với Mô Hình Ngôn Ngữ Lớn (LLM) thông qua một API đơn giản
-Gradio – Một framework UI cực kỳ đơn giản, cho phép bạn tạo giao diện người dùng prototype chỉ với một dòng mã, không cần kinh nghiệm frontend.
-Alternatives – Các lựa chọn thay thế bao gồm Streamlit, Dash và Mesop từ Google
-Weights & Biases – Công cụ phân tích và trực quan hóa trong quá trình huấn luyện mô hình.
-Google Colab – Viết, đánh giá và chia sẻ các notebook từ xa trên một máy chủ trong Google Cloud.
-Modal.com – Nền tảng AI không máy chủ (serverless) dành cho việc triển khai mô hình.
-**"Ngoài ra, nếu bạn muốn học sâu hơn về lĩnh vực này, mình khuyến khích các bạn tham gia các khóa học uy tín để nắm vững nền tảng trước khi đi sâu vào từng khía cạnh."
-
-https://nvdam.widen.net/s/wlbgbqr7cj/nvidia-learning-training-course-catalog
-
-Tai lieu tham khao trong video: Llm course
-
-Lưu ý: Toàn bộ những gì mình chia sẽ đều là những gì mình học và tổng hợp được. No COMMERCIAL intent!!
+### ✍️ Author: **Trần Thế Anh**  
+🚀 Developer | AI Engineer (NLP & Computer Vision)  
+📧 *Contact:* updating...
